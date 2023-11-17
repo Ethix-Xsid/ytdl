@@ -13,10 +13,10 @@ app.get('/download', async (req, res) => {
 
     if (!url) {
       return res.status(400).json({ error: 'URL parameter is missing.' });
-    }
+    } 
 
     const videoInfo = await ytdl.getInfo(url);
-    const formats = ytdl.filterFormats(videoInfo.formats, requestedQuality);
+    const formats = ytdl.filterFormats(videoInfo.formats, requestedQuality === 'highest' ? null : requestedQuality);
     const selectedFormat = ytdl.chooseFormat(formats, { quality: requestedQuality });
 
     if (!selectedFormat) {
