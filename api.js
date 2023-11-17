@@ -8,25 +8,22 @@ app.use(express.json());
 
 app.get('/download', async (req, res) => {
   try {
-    const url = req.query.url;
-    const requestedQuality = req.query.quality || 'highest'; // Default to highest quality if not specified
+    const url = req.query.url; // Extracting URL from query parameters
 
     if (!url) {
       return res.status(400).json({ error: 'URL parameter is missing.' });
-    } 
+    }
 
     const videoInfo = await ytdl.getInfo(url);
-    const formats = ytdl.filterFormats(videoInfo.formats, requestedQuality === 'highest' ? null : requestedQuality);
-    const selectedFormat = ytdl.chooseFormat(formats, { quality: requestedQuality });
-
-    if (!selectedFormat) {
-      return res.status(400).json({ error: 'Requested quality not available.' });
-    }
+    const formats = ytdl.filterFormats(videoInfo.formats, 'video');
 
     const result = {
       title: videoInfo.videoDetails.title,
-      downloadURL: selectedFormat.url,
-      quality: selectedFormat.qualityLabel,
+      availableQualities: formats.map(format => format.qualityLabel),
+      downloadURLs: formats.map(format => ({
+        quality: format.qualityLabel,
+        url: format.url,
+      })),
     };
 
     console.log('Download result:', result);
@@ -37,6 +34,7 @@ app.get('/download', async (req, res) => {
   }
 });
 
+// Define a response for undefined routes
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
