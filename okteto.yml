@@ -1,0 +1,9 @@
+name: node-app
+
+command: bash
+
+volumes:
+  - /usr/src/app/node_modules
+
+forward:
+  - 3000:3000
