@@ -1,17 +1,23 @@
-FROM node:lts-buster
+# Use an official Node.js runtime as a base image
+FROM node:14
 
-RUN apt-get update && \
-  apt-get install -y \
-  ffmpeg \
-  imagemagick \
-  webp && \
-  apt-get upgrade -y && \
-  rm -rf /var/lib/apt/lists/*
+# Set the working directory in the container
+WORKDIR /usr/src/app
 
-COPY package.json .
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
 
+# Install app dependencies
 RUN npm install
 
+# Copy the rest of the application code to the working directory
 COPY . .
 
-CMD ["node", "."]
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Define environment variable for PORT
+ENV PORT=3000
+
+# Start the application
+CMD ["npm", "start"]
