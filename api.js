@@ -19,8 +19,12 @@ app.get('/download', async (req, res) => {
 
     const result = {
       title: videoInfo.videoDetails.title,
-      availableQualities: formats.map(format => format.qualityLabel),
-      downloadURLs: formats.map(format => ({
+      availableQualities: formats.map((format, index) => ({
+        number: index + 1,
+        quality: format.qualityLabel,
+      })),
+      downloadURLs: formats.map((format, index) => ({
+        number: index + 1,
         quality: format.qualityLabel,
         url: format.url,
       })),
