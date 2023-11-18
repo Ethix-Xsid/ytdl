@@ -11,23 +11,36 @@ app.get('/download', async (req, res) => {
     const url = req.query.url; // Extracting URL from query parameters
     const selectedQuality = req.query.quality; // Extracting selected quality from query parameters
 
-    if (!url || !selectedQuality) {
-      return res.status(400).json({ error: 'URL or quality parameter is missing.' });
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is missing.' });
     }
 
     const videoInfo = await ytdl.getInfo(url);
     const formats = ytdl.filterFormats(videoInfo.formats, 'video');
 
-    const selectedFormat = formats.find((format, index) => (index + 1).toString() === selectedQuality);
+    if (selectedQuality) {
+      const selectedFormat = formats.find((format, index) => (index + 1).toString() === selectedQuality);
 
-    if (!selectedFormat) {
-      return res.status(400).json({ error: 'Invalid quality parameter.' });
+      if (!selectedFormat) {
+        return res.status(400).json({ error: 'Invalid quality parameter.' });
+      }
+
+      const result = {
+        title: videoInfo.videoDetails.title,
+        selectedQuality: selectedFormat.qualityLabel,
+        downloadURL: selectedFormat.url,
+      };
+
+      console.log('Download result:', result);
+      return res.json(result);
     }
 
     const result = {
       title: videoInfo.videoDetails.title,
-      selectedQuality: selectedFormat.qualityLabel,
-      downloadURL: selectedFormat.url,
+      availableQualities: formats.map((format, index) => ({
+        number: index + 1,
+        quality: format.qualityLabel,
+      })),
     };
 
     console.log('Download result:', result);
