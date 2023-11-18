@@ -35,11 +35,13 @@ app.get('/download', async (req, res) => {
       return res.json(result);
     }
 
+    const uniqueQualities = [...new Set(formats.map((format, index) => format.qualityLabel))];
+
     const result = {
       title: videoInfo.videoDetails.title,
-      availableQualities: formats.map((format, index) => ({
+      availableQualities: uniqueQualities.map((quality, index) => ({
         number: index + 1,
-        quality: format.qualityLabel,
+        quality: quality,
       })),
     };
 
