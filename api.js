@@ -1,6 +1,5 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
-const ffmpeg = require('fluent-ffmpeg');
 const ytsr = require('ytsr');
 
 const app = express();
@@ -40,23 +39,13 @@ app.get('/downloadurl', async (req, res) => {
 
     const audioURL = audioFormats[0].url;
 
-    // Convert to mp3 using ffmpeg and send as base64 data URL
-    const mp3DataURL = await new Promise((resolve, reject) => {
-      ffmpeg(audioURL)
-        .audioCodec('libmp3lame')
-        .format('mp3')
-        .toFormat('mp3')
-        .on('end', () => resolve())
-        .on('error', (err) => reject(err))
-        .pipe(res, { end: true });
-    });
-
     const result = {
       title: videoInfo.videoDetails.title,
-      downloadURL: mp3DataURL,
+      downloadURL: audioURL,
     };
 
     console.log('Download result:', result);
+    res.json(result);
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
