@@ -1,34 +1,39 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-app.get('/download', async (req, res) => {
+app.get('/downloadurl', async (req, res) => {
   try {
-    const url = req.query.url; // URL ko query parameters se nikalna
+    const query = req.query.query; // Search query or YouTube URL
 
-    if (!url) {
-      return res.status(400).json({ error: 'URL parameter is missing.' });
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is missing.' });
     }
 
-    const videoInfo = await ytdl.getInfo(url);
-    const audioFormats = ytdl.filterFormats(videoInfo.formats, 'audio');
+    let videoInfo;
+    let audioFormats;
 
-    const uniqueQualities = [...new Set(audioFormats.map((format) => format.audioQuality))];
-    const availableQualities = uniqueQualities.map((quality, index) => ({
-      number: index + 1,
-      quality: quality,
-    }));
+    if (ytdl.validateURL(query)) {
+      videoInfo = await ytdl.getInfo(query);
+      audioFormats = ytdl.filterFormats(videoInfo.formats, 'audio');
+    } else {
+      // Assume it's a search query
+      const searchResults = await ytdl.search(query);
+      const firstResult = searchResults.videos[0];
+      videoInfo = await ytdl.getInfo(firstResult.videoId);
+      audioFormats = ytdl.filterFormats(videoInfo.formats, 'audio');
+    }
 
-    const audioURL = await convertToMP3(audioFormats[0].url);
+    const audioURL = audioFormats[0].url;
 
     const result = {
       title: videoInfo.videoDetails.title,
-      availableQualities: availableQualities,
       audioURL: audioURL,
     };
 
@@ -48,14 +53,3 @@ app.use((req, res) => {
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
-
-async function convertToMP3(inputURL) {
-  return new Promise((resolve, reject) => {
-    ffmpeg(inputURL)
-      .audioCodec('libmp3lame')
-      .format('mp3')
-      .on('end', () => resolve(inputURL))
-      .on('error', (err) => reject(err))
-      .toBuffer();
-  });
-}
