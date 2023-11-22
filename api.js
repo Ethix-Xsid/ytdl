@@ -1,6 +1,7 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
-const ytsr = require('ytsr');
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -39,9 +40,27 @@ app.get('/downloadurl', async (req, res) => {
 
     const audioURL = audioFormats[0].url;
 
+    // Convert to mp3 using ffmpeg
+    const outputPath = `./temp/${Date.now()}.mp3`;
+    await new Promise((resolve, reject) => {
+      ffmpeg(audioURL)
+        .audioCodec('libmp3lame')
+        .format('mp3')
+        .on('end', () => resolve(outputPath))
+        .on('error', (err) => reject(err))
+        .save(outputPath);
+    });
+
+    // Read the converted mp3 file and send download URL
+    const mp3Buffer = fs.readFileSync(outputPath);
+    const mp3DataURL = `data:audio/mp3;base64,${mp3Buffer.toString('base64')}`;
+
+    // Clean up the temporary mp3 file
+    fs.unlinkSync(outputPath);
+
     const result = {
       title: videoInfo.videoDetails.title,
-      downloadURL: audioURL,
+      downloadURL: mp3DataURL,
     };
 
     console.log('Download result:', result);
