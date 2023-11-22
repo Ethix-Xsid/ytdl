@@ -1,7 +1,6 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
-const fs = require('fs');
 const ytsr = require('ytsr');
 
 const app = express();
@@ -41,23 +40,16 @@ app.get('/downloadurl', async (req, res) => {
 
     const audioURL = audioFormats[0].url;
 
-    // Convert to mp3 using ffmpeg
-    const outputPath = `./temp/${Date.now()}.mp3`;
-    await new Promise((resolve, reject) => {
+    // Convert to mp3 using ffmpeg and send as base64 data URL
+    const mp3DataURL = await new Promise((resolve, reject) => {
       ffmpeg(audioURL)
         .audioCodec('libmp3lame')
         .format('mp3')
-        .on('end', () => resolve(outputPath))
+        .toFormat('mp3')
+        .on('end', () => resolve())
         .on('error', (err) => reject(err))
-        .save(outputPath);
+        .pipe(res, { end: true });
     });
-
-    // Read the converted mp3 file and send download URL
-    const mp3Buffer = fs.readFileSync(outputPath);
-    const mp3DataURL = `data:audio/mp3;base64,${mp3Buffer.toString('base64')}`;
-
-    // Clean up the temporary mp3 file
-    fs.unlinkSync(outputPath);
 
     const result = {
       title: videoInfo.videoDetails.title,
@@ -65,7 +57,6 @@ app.get('/downloadurl', async (req, res) => {
     };
 
     console.log('Download result:', result);
-    res.json(result);
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
