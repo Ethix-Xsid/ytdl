@@ -1,12 +1,13 @@
 const express = require('express');
-const ytdl = require('ytdl-core-discord');
+const ytdl = require('ytdl-core');
 const ytsr = require('ytsr');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-app.get('/download', async (req, res) => {
+app.get('/downloadurl', async (req, res) => {
   try {
     const query = req.query.query;
 
@@ -16,10 +17,9 @@ app.get('/download', async (req, res) => {
 
     const isURL = ytdl.validateURL(query);
 
+    let videoInfo;
     if (isURL) {
-      const audioReadableStream = await ytdl(query, { filter: 'audioonly', quality: 'highestaudio' });
-      res.setHeader('Content-Disposition', 'attachment; filename="audio.mp3"');
-      audioReadableStream.pipe(res);
+      videoInfo = await ytdl.getInfo(query);
     } else {
       const searchResults = await ytsr(query, { limit: 1 });
       const firstVideo = searchResults.items[0];
@@ -28,10 +28,24 @@ app.get('/download', async (req, res) => {
         return res.status(404).json({ error: 'No search results found.' });
       }
 
-      const audioReadableStream = await ytdl(firstVideo.url, { filter: 'audioonly', quality: 'highestaudio' });
-      res.setHeader('Content-Disposition', 'attachment; filename="audio.mp3"');
-      audioReadableStream.pipe(res);
+      videoInfo = await ytdl.getInfo(firstVideo.url);
     }
+
+    const audioFormats = ytdl.filterFormats(videoInfo.formats, 'audioonly');
+
+    if (!audioFormats || audioFormats.length === 0) {
+      return res.status(400).json({ error: 'No audio formats available for the video.' });
+    }
+
+    const audioURL = audioFormats[0].url;
+
+    const result = {
+      title: videoInfo.videoDetails.title,
+      downloadURL: audioURL,
+    };
+
+    console.log('Download result:', result);
+    res.json(result);
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
