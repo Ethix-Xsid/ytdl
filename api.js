@@ -2,6 +2,7 @@ const express = require('express');
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
+const ytsr = require('ytsr');
 
 const app = express();
 const port = process.env.PORT || 3000;
