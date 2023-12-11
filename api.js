@@ -1,7 +1,9 @@
 const express = require('express');
-const ytdl = require('ytdl-core');
+const ytdl = require('ytdl-core-discord');
 const ytsr = require('ytsr');
 const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs');
+const util = require('util');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -38,11 +40,13 @@ app.get('/downloadurl', async (req, res) => {
       return res.status(400).json({ error: 'No audio formats available for the video.' });
     }
 
-    const audioURL = await convertToAudioURL(audioFormats[0].url);
+    const audioBuffer = await ytdl(query, { filter: 'audioonly' });
+    const audioFilename = `temp_audio_${Date.now()}.mp3`;
+    fs.writeFileSync(audioFilename, audioBuffer);
 
     const result = {
       title: videoInfo.videoDetails.title,
-      downloadURL: audioURL,
+      downloadURL: `${req.protocol}://${req.get('host')}/${audioFilename}`,
     };
 
     console.log('Download result:', result);
@@ -53,18 +57,8 @@ app.get('/downloadurl', async (req, res) => {
   }
 });
 
-async function convertToAudioURL(videoURL) {
-  return new Promise((resolve, reject) => {
-    const outputFilename = 'temp_audio.mp3';
-
-    ffmpeg(videoURL)
-      .audioCodec('libmp3lame')
-      .audioBitrate(320)
-      .on('end', () => resolve(outputFilename))
-      .on('error', (err) => reject(err))
-      .save(outputFilename);
-  });
-}
+// Serve static files (audio) from the current directory
+app.use(express.static(__dirname));
 
 // Undefined routes ke liye response define karna
 app.use((req, res) => {
