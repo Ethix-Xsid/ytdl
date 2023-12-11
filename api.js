@@ -1,9 +1,7 @@
 const express = require('express');
-const ytdl = require('ytdl-core-discord');
 const ytsr = require('ytsr');
-const ffmpeg = require('fluent-ffmpeg');
+const ytdl = require('ytdl-core');
 const fs = require('fs');
-const util = require('util');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,35 +16,17 @@ app.get('/downloadurl', async (req, res) => {
       return res.status(400).json({ error: 'Query parameter is missing.' });
     }
 
-    const isURL = ytdl.validateURL(query);
+    const videoInfo = await getVideoInfo(query);
 
-    let videoInfo;
-    if (isURL) {
-      videoInfo = await ytdl.getInfo(query);
-    } else {
-      const searchResults = await ytsr(query, { limit: 1 });
-      const firstVideo = searchResults.items[0];
-
-      if (!firstVideo || !firstVideo.url) {
-        return res.status(404).json({ error: 'No search results found.' });
-      }
-
-      videoInfo = await ytdl.getInfo(firstVideo.url);
+    if (!videoInfo) {
+      return res.status(404).json({ error: 'No search results found.' });
     }
 
-    const audioFormats = ytdl.filterFormats(videoInfo.formats, 'audioonly');
-
-    if (!audioFormats || audioFormats.length === 0) {
-      return res.status(400).json({ error: 'No audio formats available for the video.' });
-    }
-
-    const audioBuffer = await ytdl(query, { filter: 'audioonly' });
-    const audioFilename = `temp_audio_${Date.now()}.mp3`;
-    fs.writeFileSync(audioFilename, audioBuffer);
+    const audioURL = await getAudioDownloadURL(videoInfo.url);
 
     const result = {
-      title: videoInfo.videoDetails.title,
-      downloadURL: `${req.protocol}://${req.get('host')}/${audioFilename}`,
+      title: videoInfo.title,
+      downloadURL: audioURL,
     };
 
     console.log('Download result:', result);
@@ -56,6 +36,32 @@ app.get('/downloadurl', async (req, res) => {
     res.status(500).json({ error: 'An error occurred during download.' });
   }
 });
+
+async function getVideoInfo(query) {
+  const searchResults = await ytsr(query, { limit: 1 });
+
+  if (!searchResults.items || searchResults.items.length === 0) {
+    return null;
+  }
+
+  const firstVideo = searchResults.items[0];
+  return {
+    title: firstVideo.title,
+    url: firstVideo.url,
+  };
+}
+
+async function getAudioDownloadURL(videoURL) {
+  const audioInfo = await ytdl.getInfo(videoURL);
+  const audioFormats = ytdl.filterFormats(audioInfo.formats, 'audioonly');
+
+  if (!audioFormats || audioFormats.length === 0) {
+    throw new Error('No audio formats available for the video.');
+  }
+
+  const audioURL = audioFormats[0].url;
+  return audioURL;
+}
 
 // Serve static files (audio) from the current directory
 app.use(express.static(__dirname));
