@@ -1,7 +1,8 @@
 const express = require('express');
 const ytsr = require('ytsr');
 const ytdl = require('ytdl-core');
-const fs = require('fs');
+const ffmpeg = require('fluent-ffmpeg');
+const { Readable } = require('stream');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -23,14 +24,11 @@ app.get('/downloadurl', async (req, res) => {
     }
 
     const audioURL = await getAudioDownloadURL(videoInfo.url);
+    const convertedAudioBuffer = await convertAudio(audioURL);
 
-    const result = {
-      title: videoInfo.title,
-      downloadURL: audioURL,
-    };
-
-    console.log('Download result:', result);
-    res.json(result);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
+    res.end(convertedAudioBuffer);
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
@@ -63,8 +61,26 @@ async function getAudioDownloadURL(videoURL) {
   return audioURL;
 }
 
-// Serve static files (audio) from the current directory
-app.use(express.static(__dirname));
+async function convertAudio(audioURL) {
+  return new Promise((resolve, reject) => {
+    const audioStream = ytdl(audioURL, { quality: 'highestaudio' })
+      .on('error', (err) => reject(err));
+
+    const ffmpegCommand = ffmpeg()
+      .input(audioStream)
+      .audioCodec('libmp3lame')
+      .toFormat('mp3')
+      .on('error', (err) => reject(err));
+
+    ffmpegCommand.toBuffer((err, buffer) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(buffer);
+      }
+    });
+  });
+}
 
 // Undefined routes ke liye response define karna
 app.use((req, res) => {
