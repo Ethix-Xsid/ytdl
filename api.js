@@ -1,6 +1,7 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
 const ytsr = require('ytsr');
+const ffmpeg = require('fluent-ffmpeg');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -37,7 +38,7 @@ app.get('/downloadurl', async (req, res) => {
       return res.status(400).json({ error: 'No audio formats available for the video.' });
     }
 
-    const audioURL = audioFormats[0].url;
+    const audioURL = await convertToAudioURL(audioFormats[0].url);
 
     const result = {
       title: videoInfo.videoDetails.title,
@@ -51,6 +52,19 @@ app.get('/downloadurl', async (req, res) => {
     res.status(500).json({ error: 'An error occurred during download.' });
   }
 });
+
+async function convertToAudioURL(videoURL) {
+  return new Promise((resolve, reject) => {
+    const outputFilename = 'temp_audio.mp3';
+
+    ffmpeg(videoURL)
+      .audioCodec('libmp3lame')
+      .audioBitrate(320)
+      .on('end', () => resolve(outputFilename))
+      .on('error', (err) => reject(err))
+      .save(outputFilename);
+  });
+}
 
 // Undefined routes ke liye response define karna
 app.use((req, res) => {
