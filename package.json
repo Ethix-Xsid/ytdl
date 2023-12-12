@@ -1,12 +1,12 @@
 {
   "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cric-live-score": "^3.2.0",
+    "cricket-live-api": "^1.0.0",
     "express": "^4.18.2",
-    "fluent-ffmpeg": "^2.1.2",
-    "ytdl-core": "^4.11.5",
+    "google-play-scraper": "^10.0.0",
+    "yt-search": "^2.10.4",
     "ytdl-core-discord": "^1.3.1"
-    "ytsr": "^3.8.4"
-  },
-  "scripts": {
-    "start": "node api.js"
   }
 }
