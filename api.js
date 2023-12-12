@@ -14,14 +14,36 @@ app.get('/download', async (req, res) => {
     const info = await ytdl.getInfo(url);
     const audioFormat = ytdl.filterFormats(info.formats, 'audioonly')[0];
 
-    res.header('Content-Disposition', `attachment; filename="${info.title}.mp3"`);
-    ytdl(url, { format: audioFormat })
-      .pipe(res);
+    const downloadURL = await downloadWithCallback(url, audioFormat);
+
+    res.json({ downloadURL });
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
+
+async function downloadWithCallback(url, format) {
+  return new Promise((resolve, reject) => {
+    const videoStream = ytdl(url, { format });
+
+    videoStream.on('end', () => {
+      const downloadURL = `/downloads/${urlToFileName(url)}.mp3`;
+      resolve(downloadURL);
+    });
+
+    videoStream.on('error', (error) => {
+      reject(error);
+    });
+
+    videoStream.pipe(fs.createWriteStream(`./public/downloads/${urlToFileName(url)}.mp3`));
+  });
+}
+
+function urlToFileName(url) {
+  // Convert URL to a safe filename
+  return url.replace(/[^\w\s]/gi, '');
+}
