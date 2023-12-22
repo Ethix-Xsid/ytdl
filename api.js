@@ -27,7 +27,7 @@ app.get('/download', async (req, res) => {
     const videoId = isLink ? ytdl.getURLVideoID(query) : await ytSearch(query).then(results => results.videos[0].videoId);
 
     const downloadUrl = await ytdl.getBasicInfo(videoId).then(info => {
-      const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+      const audioFormat = ytdl.chooseFormat(info.formats.filter(format => format.mimeType.includes('audio')), { quality: 'highestaudio' });
       return audioFormat.url;
     });
 
