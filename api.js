@@ -27,14 +27,14 @@ app.get('/download', async (req, res) => {
 
     let videoInfo;
     if (isLink) {
-      videoInfo = await ytdl.getInfo(query, { filter: 'audioandvideo' });
+      videoInfo = await ytdl.getInfo(query, { filter: 'audio' });
     } else {
       const searchResults = await ytSearch(query);
       if (!searchResults.videos.length) {
         return res.status(404).json({ error: 'No videos found for the given song query.' });
       }
 
-      videoInfo = await ytdl.getInfo(searchResults.videos[0].url, { filter: 'audioandvideo' });
+      videoInfo = await ytdl.getInfo(searchResults.videos[0].url, { filter: 'audio' });
     }
 
     const audioFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
