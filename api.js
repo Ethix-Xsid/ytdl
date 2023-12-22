@@ -15,6 +15,12 @@ function formatBytes(bytes) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
+async function getAudioUrl(videoId) {
+  const info = await ytdl.getInfo(videoId);
+  const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+  return audioFormat.url;
+}
+
 app.get('/download', async (req, res) => {
   try {
     const query = req.query.song;
@@ -24,21 +30,9 @@ app.get('/download', async (req, res) => {
     }
 
     const isLink = ytdl.validateURL(query);
+    const videoId = isLink ? ytdl.getURLVideoID(query) : await ytSearch(query).then(results => results.videos[0].videoId);
 
-    let videoInfo;
-    if (isLink) {
-      videoInfo = await ytdl.getInfo(query, { filter: 'audio' });
-    } else {
-      const searchResults = await ytSearch(query);
-      if (!searchResults.videos.length) {
-        return res.status(404).json({ error: 'No videos found for the given song query.' });
-      }
-
-      videoInfo = await ytdl.getInfo(searchResults.videos[0].url, { filter: 'audio' });
-    }
-
-    const audioFormat = ytdl.chooseFormat(videoInfo.formats, { quality: 'highestaudio' });
-    const downloadUrl = audioFormat.url;
+    const downloadUrl = await getAudioUrl(videoId);
 
     // Format duration into hours, minutes, and seconds
     const durationHours = Math.floor(videoInfo.videoDetails.lengthSeconds / 3600);
@@ -61,8 +55,8 @@ app.get('/download', async (req, res) => {
 
     console.log('Download result:', result);
 
-    // Respond with JSON including the download URL
-    res.json(result);
+    // Respond with JSON including the download URL for MP3
+    res.json({ downloadUrl: result.downloadUrl });
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
