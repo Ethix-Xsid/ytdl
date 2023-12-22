@@ -16,12 +16,12 @@ function formatBytes(bytes) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
-app.get('/downloadurl', async (req, res) => {
+app.get('/download', async (req, res) => {
   try {
-    const query = req.query.query || req.query.link;
+    const query = req.query.song;
 
     if (!query) {
-      return res.status(400).json({ error: 'Query parameter or link is missing.' });
+      return res.status(400).json({ error: 'Song query parameter is missing.' });
     }
 
     const isLink = ytdl.validateURL(query);
@@ -32,7 +32,7 @@ app.get('/downloadurl', async (req, res) => {
     } else {
       const searchResults = await ytSearch(query);
       if (!searchResults.videos.length) {
-        return res.status(404).json({ error: 'No videos found for the given query.' });
+        return res.status(404).json({ error: 'No videos found for the given song query.' });
       }
 
       videoInfo = await ytdl.getInfo(searchResults.videos[0].url, { filter: 'audioandvideo' });
