@@ -1,7 +1,6 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
 const ytSearch = require('yt-search');
-const ffmpeg = require('fluent-ffmpeg');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -62,16 +61,8 @@ app.get('/download', async (req, res) => {
 
     console.log('Download result:', result);
 
-    // Convert audio to MP3 using fluent-ffmpeg
-    const mp3Stream = await ffmpeg()
-      .input(downloadUrl)
-      .audioCodec('libmp3lame')
-      .toFormat('mp3')
-      .pipe();
-
-    res.setHeader('Content-Type', 'audio/mp3');
-    res.setHeader('Content-Disposition', `attachment; filename="${result.title}.mp3"`);
-    mp3Stream.pipe(res);
+    // Respond with JSON including the download URL
+    res.json(result);
   } catch (error) {
     console.error('Error during download:', error);
     res.status(500).json({ error: 'An error occurred during download.' });
