@@ -8,8 +8,8 @@ const PORT = 3000;
 app.use(express.json());
 
 app.all('/download', async (req, res) => {
-  if (req.method === 'get') {
-    try {
+  try {
+    if (req.method === 'POST') {
       const { query, url } = req.body;
 
       let videoInfo;
@@ -28,15 +28,14 @@ app.all('/download', async (req, res) => {
       const audioFormat = ytdl.chooseFormat(videoInfo.formats, { filter: 'audioonly' });
       const audioStream = ytdl.downloadFromInfo(videoInfo, { format: audioFormat });
 
-      res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.videoDetails.title}.mp3"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
       audioStream.pipe(res);
-
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: error.message });
+    } else {
+      res.status(405).send('Method Not Allowed');
     }
-  } else {
-    res.status(405).send('Method Not Allowed');
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 });
 
