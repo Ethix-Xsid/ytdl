@@ -7,31 +7,35 @@ const PORT = 3000;
 
 app.use(express.json());
 
-app.post('/download', async (req, res) => {
-  try {
-    const { query, url } = req.body;
+app.all('/download', async (req, res) => {
+  if (req.method === 'POST') {
+    try {
+      const { query, url } = req.body;
 
-    let videoInfo;
-    if (url) {
-      videoInfo = await ytdl.getInfo(url);
-    } else if (query) {
-      const searchResults = await ytSearch(query);
-      if (searchResults.videos.length === 0) {
-        throw new Error('No video found with the given query.');
+      let videoInfo;
+      if (url) {
+        videoInfo = await ytdl.getInfo(url);
+      } else if (query) {
+        const searchResults = await ytSearch(query);
+        if (searchResults.videos.length === 0) {
+          throw new Error('No video found with the given query.');
+        }
+        videoInfo = await ytdl.getInfo(searchResults.videos[0].url);
+      } else {
+        throw new Error('Please provide either a YouTube link or a search query.');
       }
-      videoInfo = await ytdl.getInfo(searchResults.videos[0].url);
-    } else {
-      throw new Error('Please provide either a YouTube link or a search query.');
+
+      const audioFormat = ytdl.chooseFormat(videoInfo.formats, { filter: 'audioonly' });
+      const audioStream = ytdl.downloadFromInfo(videoInfo, { format: audioFormat });
+
+      res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
+      audioStream.pipe(res);
+
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    const audioFormat = ytdl.chooseFormat(videoInfo.formats, { filter: 'audioonly' });
-    const audioStream = ytdl.downloadFromInfo(videoInfo, { format: audioFormat });
-
-    res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
-    audioStream.pipe(res);
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } else {
+    res.status(405).send('Method Not Allowed');
   }
 });
 
