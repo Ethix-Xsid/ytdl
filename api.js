@@ -8,7 +8,7 @@ const PORT = 3000;
 app.use(express.json());
 
 app.all('/download', async (req, res) => {
-  if (req.method === 'POST') {
+  if (req.method === 'GET') {
     try {
       const { query, url } = req.body;
 
