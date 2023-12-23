@@ -1,41 +1,44 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
-const ytSearch = require('yt-search');
+const yts = require('yt-search');
 
 const app = express();
-const PORT = 3000;
+const port = 3000;
 
-app.use(express.json());
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 
-app.post('/download', async (req, res) => {
+app.get('/download', async (req, res) => {
+  const videoInput = req.query.input;
+
   try {
-    const { query, url } = req.body;
+    // Check if the input is a valid YouTube video URL
+    if (ytdl.validateURL(videoInput)) {
+      const info = await ytdl.getInfo(videoInput);
+      const format = ytdl.filterFormats(info.formats, 'audioonly')[0];
 
-    let videoInfo;
-    if (url) {
-      videoInfo = await ytdl.getInfo(url);
-    } else if (query) {
-      const searchResults = await ytSearch(query);
-      if (searchResults.videos.length === 0) {
-        throw new Error('No video found with the given query.');
-      }
-      videoInfo = await ytdl.getInfo(searchResults.videos[0].url);
+      res.header('Content-Disposition', `attachment; filename="${info.videoDetails.title}.mp3"`);
+      ytdl(videoInput, { format }).pipe(res);
     } else {
-      throw new Error('Please provide either a YouTube link or a search query.');
+      // Assume it's a search query
+      const searchResults = await yts(videoInput);
+      const firstVideo = searchResults.videos[0];
+
+      if (firstVideo) {
+        const format = ytdl.filterFormats(firstVideo.url, 'audioonly')[0];
+
+        res.header('Content-Disposition', `attachment; filename="${firstVideo.title}.mp3"`);
+        ytdl(firstVideo.url, { format }).pipe(res);
+      } else {
+        res.status(404).send('No video found.');
+      }
     }
-
-    const audioFormat = ytdl.chooseFormat(videoInfo.formats, { filter: 'audioonly' });
-    const audioStream = ytdl.downloadFromInfo(videoInfo, { format: audioFormat });
-
-    res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
-    audioStream.pipe(res);
-
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).send('Error downloading the audio.');
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`);
 });
