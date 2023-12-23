@@ -1,50 +1,40 @@
 const express = require('express');
-const ytdl = require('ytdl-core-discord');
+const ytdl = require('ytdl-core');
 const ytSearch = require('yt-search');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = 3000;
 
 app.use(express.json());
 
-app.get('/download', async (req, res) => {
+app.post('/download', async (req, res) => {
   try {
-    const query = req.query.song;
+    const { query, url } = req.body;
 
-    if (!query) {
-      return res.status(400).json({ error: 'Song query parameter is missing.' });
+    let videoInfo;
+    if (url) {
+      videoInfo = await ytdl.getInfo(url);
+    } else if (query) {
+      const searchResults = await ytSearch(query);
+      if (searchResults.videos.length === 0) {
+        throw new Error('No video found with the given query.');
+      }
+      videoInfo = await ytdl.getInfo(searchResults.videos[0].url);
+    } else {
+      throw new Error('Please provide either a YouTube link or a search query.');
     }
 
-    const isLink = ytdl.validateURL(query);
-    const videoId = isLink ? ytdl.getURLVideoID(query) : await ytSearch(query).then(results => results.videos[0].videoId);
+    const audioFormat = ytdl.chooseFormat(videoInfo.formats, { filter: 'audioonly' });
+    const audioStream = ytdl.downloadFromInfo(videoInfo, { format: audioFormat });
 
-    const info = await ytdl.getBasicInfo(videoId);
-    const audioFormat = ytdl.chooseFormat(info.formats, { filter: 'audioonly' });
-    
-    if (!audioFormat) {
-      return res.status(404).json({ error: 'Audio format not available for the given video.' });
-    }
+    res.setHeader('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
+    audioStream.pipe(res);
 
-    const downloadUrl = audioFormat.url;
-
-    const result = {
-      downloadUrl: downloadUrl,  // Direct audio download URL
-    };
-
-    console.log('Download result:', result);
-
-    // Respond with JSON including the download URL for MP3
-    res.json(result);
   } catch (error) {
-    console.error('Error during download:', error);
-    res.status(500).json({ error: 'An error occurred during download.' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
-});
-
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
